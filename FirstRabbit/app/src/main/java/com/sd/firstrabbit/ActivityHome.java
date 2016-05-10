@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
+import com.rabbitmq.client.MessageProperties;
 import com.sd.firstrabbit.R;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -50,6 +51,7 @@ public class ActivityHome extends Activity {
         categories.add("adrianodiasx93");
         categories.add("ericmoura");
         categories.add("alexpud");
+        categories.add("hello");
 
         // Creating adapter for spinner
         ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, categories);
@@ -59,13 +61,14 @@ public class ActivityHome extends Activity {
 
         // attaching data adapter to spinner
         spinner.setAdapter(dataAdapter);
-        contact = "adrianodiasx93";
+//        contact = "adrianodiasx93";
 
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
                 contact = spinner.getItemAtPosition(position).toString();
                 Toast.makeText(ActivityHome.this, "Selected: " + contact, Toast.LENGTH_LONG).show();
+                publishThread.interrupt();
                 publishToAMQP(contact);
             }
 
@@ -157,7 +160,7 @@ public class ActivityHome extends Activity {
                         Connection connection = factory.newConnection();
                         Channel channel = connection.createChannel();
                         channel.basicQos(1);
-                        DeclareOk q = channel.queueDeclare("ericmoura", false, false, false, null);
+                        DeclareOk q = channel.queueDeclare("ericmoura", true, false, false, null);
                         channel.queueBind(q.getQueue(), "amq.direct", "ericmoura");
                         QueueingConsumer consumer = new QueueingConsumer(channel);
                         channel.basicConsume(q.getQueue(), true, consumer);
@@ -206,8 +209,8 @@ public class ActivityHome extends Activity {
                         while (true) {
                             String message = queue.takeFirst();
                             try{
-                                ch.queueDeclare(contact, false, false, false, null);
-                                ch.basicPublish("amq.direct", contact, null, message.getBytes());
+                                ch.queueDeclare(contact, true, false, false, null);
+                                ch.basicPublish("amq.direct", contact, MessageProperties.PERSISTENT_TEXT_PLAIN, message.getBytes());
                                 Log.d("", "[s] " + message);
                                 ch.waitForConfirmsOrDie();
                             } catch (Exception e){
